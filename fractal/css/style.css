@@ -1,0 +1,111 @@
+html,
+body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    background-color: #111;
+    color: whitesmoke;
+    display: flex;
+}
+
+#left {
+    display: none;
+    flex-direction: column;
+    padding: 0.5em;
+    gap: 1em;
+
+    overflow-y: auto;
+    overflow-x: visible;
+}
+
+#container {
+    flex: 1;
+    overflow: auto;
+}
+
+textarea {
+    line-height: 1.2em;
+    width: 100%;
+    white-space: nowrap;
+}
+
+.vertex {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+
+    border-radius: 50%;
+
+    background-color: whitesmoke;
+
+    z-index: 100;
+
+    cursor: pointer;
+
+    &.selected {
+        background-color: gold;
+    }
+}
+
+polyline {
+    &.red {
+        color: rgb(255, 13, 0);
+    }
+
+    &.blue {
+        color: rgb(71, 221, 255);
+    }
+
+    &.orange {
+        color: rgb(255, 141, 71);
+    }
+}
+
+.layer {
+    display: flex;
+    flex-direction: column;
+
+    padding-left: 2em;
+    border-left: whitesmoke 1px dashed;
+}
+
+button {
+    width: fit-content;
+
+    background: none;
+    color: whitesmoke;
+
+    border: whitesmoke 1px solid;
+
+    cursor: pointer;
+}
+
+.dot {
+    color: whitesmoke;
+}
+
+.hidden {
+    display: none;
+}
+
+#context-menu {
+    position: absolute;
+    display: none;
+    border: whitesmoke 1px solid;
+    padding: 0.5em;
+    flex-direction: column;
+    gap: 0.5em;
+
+    margin: 0.5em;
+
+    background-color: #1118;
+    z-index: 100;
+
+    & button {
+        &:hover {
+            opacity: 0.5;
+        }
+    }
+}
