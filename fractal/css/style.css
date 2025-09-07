@@ -25,12 +25,14 @@ body {
 }
 
 #container {
-    flex: 1;
-    overflow: auto;
+    position: relative;
 
-    width: fit-content;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    /* overflow: auto; */
 
-    margin-right: 15%;
+    margin-top: 100px;
 }
 
 textarea {

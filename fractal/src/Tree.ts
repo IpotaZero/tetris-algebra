@@ -152,7 +152,8 @@ class TreeDrawer {
     vertices: Map<string, HTMLElement> = new Map()
     contextMenu!: HTMLElement
 
-    #gap = 6
+    #width = 6
+    #height = (this.#width * 4 * 2) / Math.sqrt(3)
 
     #container: HTMLElement
     #info: HTMLElement
@@ -183,21 +184,38 @@ class TreeDrawer {
 
         const root = this.#setRootElement()
 
-        const r = this.#info.getBoundingClientRect()
-
-        let id = ""
-        let t = tree
-        while (1) {
-            if (t.length === 0) break
-            t = t[0]
-            id += "0"
-        }
-
         const w = this.#displayGraph(tree, root, "", 0)
 
-        for (let i = 0; i < 3; i++) {
-            root.style.left = `calc(${r.width * 1.1}px + ${w.left}px)`
+        const depth = TreeController.getMaxDepth(tree)
+
+        const top = (this.#height / Math.sqrt(3)) * (depth - 1)
+
+        this.#container.style.height = `calc(${this.#width * 2 * depth + top}px + 1.5em)`
+
+        // const name = JSON.stringify(tree)
+
+        const graphWidth = w.left + w.right + this.#width * 2
+        // const width = Math.max(graphWidth, name.length * 8)
+        const width = graphWidth
+
+        if (w.left <= w.right) {
+            root.style.left = `${w.left}px`
+        } else {
+            root.style.left = ""
+            root.style.right = `${w.right}px`
         }
+
+        // if (graphWidth <= name.length * 8) {
+        //     root.style.left = `${(width + w.left - w.right) / 2 - this.#width}px`
+        // }
+
+        this.#container.style.width = width + "px"
+
+        // const p = document.createElement("span")
+        // p.textContent = name
+        // p.style.width = "100%"
+        // p.style.textAlign = "center"
+        // this.#container.appendChild(p)
     }
 
     #setupContextMenu() {
@@ -227,7 +245,7 @@ class TreeDrawer {
         direction: 0 | 1 | 2,
     ): { right: number; left: number } {
         if (tree.length === 0) {
-            return { right: this.#gap * 2, left: this.#gap * 2 }
+            return { right: this.#width * 2, left: this.#width * 2 }
         } else if (tree.length === 1) {
             const vertex = this.#setVertexElement(parentElement, id + "0", "blue")
             return this.#displayGraph(tree[0], vertex, id + "0", 0)
@@ -238,8 +256,8 @@ class TreeDrawer {
             const vertex1 = this.#setVertexElement(parentElement, id + "1", "red")
             const width1 = this.#displayGraph(tree[1], vertex1, id + "1", 2)
 
-            const left = width0.right + this.#gap
-            const right = width1.left + this.#gap
+            const left = width0.right + this.#width
+            const right = width1.left + this.#width
 
             vertex0.style.left = -left + "px"
             vertex1.style.left = right + "px"
@@ -251,7 +269,7 @@ class TreeDrawer {
     }
 
     #setRootElement() {
-        const root = this.#createVertexElement(this.top, 0, "")
+        const root = this.#createVertexElement(0, 0, "")
         this.#container.appendChild(root)
 
         return root
@@ -269,7 +287,7 @@ class TreeDrawer {
     }
 
     #setVertexElement(parentElement: HTMLElement, id: string, color: string) {
-        const vertex = this.#createVertexElement((this.#gap * 4 * 2) / Math.sqrt(3), 0, id)
+        const vertex = this.#createVertexElement(this.#height, 0, id)
 
         parentElement.appendChild(vertex)
 
@@ -382,7 +400,7 @@ class TreeDrawer {
     }
 }
 
-class TreeController {
+export class TreeController {
     static countRank(tree: tree): number | null {
         if (tree.length === 0) return 0
         else if (tree.length === 1) {
@@ -400,6 +418,19 @@ class TreeController {
             if (leftRank === null) return null
 
             return leftRank + 1
+        }
+
+        throw new Error("ミツマタが発生!")
+    }
+
+    static getMaxDepth(tree: tree): number {
+        if (tree.length === 0) return 1
+        if (tree.length === 1) return this.getMaxDepth(tree[0]) + 1
+        if (tree.length === 2) {
+            const leftDepth = this.getMaxDepth(tree[0]) + 1
+            const rightDepth = this.getMaxDepth(tree[1]) + 1
+
+            return Math.max(leftDepth, rightDepth)
         }
 
         throw new Error("ミツマタが発生!")
