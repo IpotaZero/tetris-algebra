@@ -68,73 +68,73 @@ document.addEventListener("DOMContentLoaded", async () => {
         tree.display()
     }
 
-    const tree2 = new Tree(container, info)
+    // const tree2 = new Tree(container, info)
 
-    const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-    })
+    // const stream = await navigator.mediaDevices.getDisplayMedia({
+    //     video: true,
+    // })
 
-    const track = stream.getVideoTracks()[0]
+    // const track = stream.getVideoTracks()[0]
 
-    // 型定義にない場合は any にキャスト
-    const imageCapture = new (window as any).ImageCapture(track)
+    // // 型定義にない場合は any にキャスト
+    // const imageCapture = new (window as any).ImageCapture(track)
 
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    // await new Promise((resolve) => setTimeout(resolve, 2000))
 
-    // トリミングするピクセル数
-    const trimLeft = 0
-    const trimBottom = 800
+    // // トリミングするピクセル数
+    // const trimLeft = 0
+    // const trimBottom = 800
 
-    for (const t of generateRankNTree(5)) {
-        tree.tree = t
+    // for (const t of generateRankNTree(5)) {
+    //     tree.tree = t
 
-        if (tree.isSemiFractal()) {
-            tree2.tree = tree.getCut(t)
-            tree2.top = 40
+    //     if (tree.isSemiFractal()) {
+    //         tree2.tree = tree.getCut(t)
+    //         tree2.top = 40
 
-            container.innerHTML = ""
+    //         container.innerHTML = ""
 
-            tree.display()
-            tree2.display()
+    //         tree.display()
+    //         tree2.display()
 
-            await new Promise((resolve) => requestAnimationFrame(resolve))
-            await new Promise((resolve) => requestAnimationFrame(resolve))
+    //         await new Promise((resolve) => requestAnimationFrame(resolve))
+    //         await new Promise((resolve) => requestAnimationFrame(resolve))
 
-            // grabFrame も any 扱いにする
-            const bitmap: ImageBitmap = await imageCapture.grabFrame()
+    //         // grabFrame も any 扱いにする
+    //         const bitmap: ImageBitmap = await imageCapture.grabFrame()
 
-            // 切り抜きサイズを計算
-            const cropWidth = bitmap.width - trimLeft
-            const cropHeight = bitmap.height - trimBottom
+    //         // 切り抜きサイズを計算
+    //         const cropWidth = bitmap.width - trimLeft
+    //         const cropHeight = bitmap.height - trimBottom
 
-            const canvas = document.createElement("canvas")
-            canvas.width = cropWidth
-            canvas.height = cropHeight
+    //         const canvas = document.createElement("canvas")
+    //         canvas.width = cropWidth
+    //         canvas.height = cropHeight
 
-            const ctx = canvas.getContext("2d")
-            if (!ctx) throw new Error("Canvas context not available")
+    //         const ctx = canvas.getContext("2d")
+    //         if (!ctx) throw new Error("Canvas context not available")
 
-            // 左と下をトリミング
-            ctx.drawImage(
-                bitmap,
-                trimLeft, // sx: 左から何pxカットするか
-                0, // sy: 上は切らない
-                cropWidth, // sw: 幅
-                cropHeight, // sh: 高さ
-                0, // dx
-                0, // dy
-                cropWidth, // dw
-                cropHeight, // dh
-            )
+    //         // 左と下をトリミング
+    //         ctx.drawImage(
+    //             bitmap,
+    //             trimLeft, // sx: 左から何pxカットするか
+    //             0, // sy: 上は切らない
+    //             cropWidth, // sw: 幅
+    //             cropHeight, // sh: 高さ
+    //             0, // dx
+    //             0, // dy
+    //             cropWidth, // dw
+    //             cropHeight, // dh
+    //         )
 
-            downloadImage(canvas.toDataURL("image/png"), JSON.stringify(t))
-        }
-    }
+    //         downloadImage(canvas.toDataURL("image/png"), JSON.stringify(t))
+    //     }
+    // }
 
-    track.stop() // キャプチャ終了
+    // track.stop() // キャプチャ終了
 })
 
-type tree = [] | [tree] | [tree, tree]
+// type tree = [] | [tree] | [tree, tree]
 
 // const tree = new Tree(document.body, document.body)
 
@@ -151,28 +151,28 @@ type tree = [] | [tree] | [tree, tree]
 // console.log(JSON.stringify(semiFractals, null, 4))
 // console.log(JSON.stringify(fractals))
 
-function* generateRankNTree(n: number): Generator<tree> {
-    if (n === 0) {
-        yield []
-        return
-    }
+// function* generateRankNTree(n: number): Generator<tree> {
+//     if (n === 0) {
+//         yield []
+//         return
+//     }
 
-    for (const subTree of generateRankNTree(n - 1)) {
-        yield [subTree]
-    }
+//     for (const subTree of generateRankNTree(n - 1)) {
+//         yield [subTree]
+//     }
 
-    for (const subTree of generateRankNTree(n - 1)) {
-        for (const subTree2 of generateRankNTree(n - 1)) {
-            yield [subTree, subTree2]
-        }
-    }
-}
+//     for (const subTree of generateRankNTree(n - 1)) {
+//         for (const subTree2 of generateRankNTree(n - 1)) {
+//             yield [subTree, subTree2]
+//         }
+//     }
+// }
 
-function downloadImage(url: string, filename: string) {
-    const a = document.createElement("a")
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-}
+// function downloadImage(url: string, filename: string) {
+//     const a = document.createElement("a")
+//     a.href = url
+//     a.download = filename
+//     document.body.appendChild(a)
+//     a.click()
+//     document.body.removeChild(a)
+// }

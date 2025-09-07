@@ -108,7 +108,7 @@ export class Tree {
         this.#edges.forEach((c) => c.destroy())
         this.#edges.clear()
 
-        // this.#container.innerHTML = ""
+        this.#container.innerHTML = ""
         this.#info.innerHTML = ""
 
         this.#info.innerHTML = this.stringify() + "<br>"
@@ -136,7 +136,7 @@ export class Tree {
         this.#container.appendChild(root)
 
         const w = this.#displayGraph(this.tree, root)
-        root.style.left = `calc(30% + ${w}px)`
+        root.style.left = `calc(40% + ${w}px)`
 
         this.#vertices.forEach((v) => {
             v.onclick = (e) => {
@@ -280,8 +280,8 @@ export class Tree {
 
             const av = width0 + width1 - this.#gap
 
-            vertex0.style.left = -av - this.#gap + "px"
-            vertex1.style.left = av + this.#gap + "px"
+            vertex0.style.left = -av * (Math.sqrt(3) / 2) - this.#gap + "px"
+            vertex1.style.left = av * (Math.sqrt(3) / 2) + this.#gap + "px"
 
             return width0 + width1
         } else {

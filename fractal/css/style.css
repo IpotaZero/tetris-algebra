@@ -11,7 +11,7 @@ body {
 }
 
 #left {
-    display: none;
+    display: flex;
     flex-direction: column;
     padding: 0.5em;
     gap: 1em;
