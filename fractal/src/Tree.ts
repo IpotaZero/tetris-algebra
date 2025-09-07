@@ -5,45 +5,13 @@ type tree = [] | [tree] | [tree, tree]
 export class Tree {
     tree: tree = []
 
-    #gap = 7
-    #container: HTMLElement
-    #edges: Map<[HTMLElement, HTMLElement], Connector> = new Map()
-
-    #vertices: HTMLElement[] = []
-
-    #contextMenu: HTMLElement
-
-    #info
-
-    #selectedLeafIdMap = new Map<string, string>()
-    #selectedCount = 0
-
     history: string[] = []
     #historyIndex = 0
 
-    top = 10
+    #drawer: TreeDrawer
 
     constructor(container: HTMLElement, info: HTMLElement) {
-        this.#container = container
-        this.#info = info
-
-        container.innerHTML = `
-            <div id="context-menu">
-                <button>追加</button>
-                <button>消す</button>
-                <button>これ以下を木にする</button>
-                <button>この頂点をマークする/外す</button>
-            </div>
-        `
-
-        this.#contextMenu = container.querySelector("#context-menu")!
-        this.#contextMenu.style.display = "none"
-
-        document.body.append(this.#contextMenu)
-
-        this.#container.addEventListener("pointerdown", () => {
-            this.#contextMenu.style.display = "none"
-        })
+        this.#drawer = new TreeDrawer(container, info)
     }
 
     undo() {
@@ -61,84 +29,29 @@ export class Tree {
     }
 
     divide() {
-        this.#divide(this.tree)
+        TreeController.divide(this.tree)
         this.display()
-    }
-
-    #divide(tree: tree) {
-        if (tree.length === 1) {
-            if (tree[0].length === 0) tree.splice(0, 1)
-            else this.#divide(tree[0])
-        } else if (tree.length === 2) {
-            if (tree[1].length === 0) tree.splice(0, 1)
-            else this.#divide(tree[1])
-
-            if (tree[0].length === 0) tree.splice(0, 1)
-            else this.#divide(tree[0])
-        }
     }
 
     cut() {
-        this.tree = JSON.parse(JSON.stringify(this.getCut(this.tree)))
+        this.tree = JSON.parse(JSON.stringify(TreeController.cut(this.tree)))
         this.display()
-    }
-
-    getCut(tree: tree): tree {
-        if (tree.length === 0) {
-            return []
-        } else if (tree.length === 1) {
-            return [this.getCut(tree[0]), tree[0]]
-        } else if (tree.length === 2) {
-            return [this.getCut(tree[1]), tree[1]]
-        } else {
-            throw new SyntaxError("ミツマタが発生!")
-        }
     }
 
     display(save = true) {
         if (save) {
-            this.history = this.history.slice(0, this.#historyIndex + 1)
-
-            this.history.push(JSON.stringify(this.tree))
-            this.#historyIndex = this.history.length - 1
+            this.#saveHistory()
         }
 
-        this.#contextMenu.style.display = "none"
+        this.#drawer.display(this.tree)
 
-        this.#edges.forEach((c) => c.destroy())
-        this.#edges.clear()
+        this.#drawer.setupLeft(this.tree, this.history)
 
-        this.#container.innerHTML = ""
-        this.#info.innerHTML = ""
+        this.#setupVertexEvent()
+    }
 
-        this.#info.innerHTML = this.stringify() + "<br>"
-        this.#info.innerHTML += JSON.stringify(this.tree) + "<br>"
-        this.#info.innerHTML += `階層: ${this.#countRank(this.tree) ?? "一意でない"}` + "<br>"
-        this.#info.innerHTML += `準フラクタル？ ${this.isSemiFractal()}` + "<br>"
-        this.#info.innerHTML +=
-            `C(W)=W？ ${JSON.stringify(this.getCut(this.tree)) === JSON.stringify(this.tree)}` + "<br>"
-
-        this.#info.innerHTML += `<textarea rows="5">${this.history
-            .map((tree) => JSON.stringify(tree).slice(1, -1))
-            .join("\n")}</textarea> <br>`
-
-        this.#container.appendChild(Connector.ensureLayer())
-
-        this.folder()
-
-        const root = document.createElement("span")
-        root.classList.add("vertex")
-        root.id = ""
-        root.style.top = this.top + "%"
-
-        this.#vertices.push(root)
-
-        this.#container.appendChild(root)
-
-        const w = this.#displayGraph(this.tree, root)
-        root.style.left = `calc(40% + ${w}px)`
-
-        this.#vertices.forEach((v) => {
+    #setupVertexEvent() {
+        this.#drawer.vertices.forEach((v) => {
             v.onclick = (e) => {
                 if (e.target === v) {
                     this.#add(v.id)
@@ -146,37 +59,41 @@ export class Tree {
             }
 
             v.oncontextmenu = (e) => {
-                if (e.target === v) {
-                    e.preventDefault()
+                if (e.target !== v) return
 
-                    this.#contextMenu.style.display = "flex"
-                    this.#contextMenu.style.left = e.clientX + "px"
-                    this.#contextMenu.style.top = e.clientY + "px"
+                e.preventDefault()
 
-                    this.#contextMenu.querySelector<HTMLElement>(":nth-child(1)")!.onclick = () => {
-                        this.#add(v.id)
-                    }
+                this.#drawer.contextMenu.style.display = "flex"
+                this.#drawer.contextMenu.style.left = e.clientX + "px"
+                this.#drawer.contextMenu.style.top = e.clientY + "px"
 
-                    this.#contextMenu.querySelector<HTMLElement>(":nth-child(2)")!.onclick = () => {
-                        this.#remove(v.id)
-                    }
+                const c = this.#drawer.contextMenu
 
-                    this.#contextMenu.querySelector<HTMLElement>(":nth-child(3)")!.onclick = () => {
-                        this.#take(v.id)
-                    }
+                c.querySelector<HTMLElement>(":nth-child(1)")!.onclick = () => {
+                    this.#add(v.id)
+                }
 
-                    this.#contextMenu.querySelector<HTMLElement>(":nth-child(4)")!.onclick = () => {
-                        if (this.#selectedLeafIdMap.get(v.id)) {
-                            this.#selectedLeafIdMap.delete(v.id)
-                        } else {
-                            this.#selectedLeafIdMap.set(v.id, `oklch(70% 0.2 ${this.#selectedCount++ * 67})`)
-                        }
+                c.querySelector<HTMLElement>(":nth-child(2)")!.onclick = () => {
+                    this.#remove(v.id)
+                }
 
-                        this.display(false)
-                    }
+                c.querySelector<HTMLElement>(":nth-child(3)")!.onclick = () => {
+                    this.#take(v.id)
+                }
+
+                c.querySelector<HTMLElement>(":nth-child(4)")!.onclick = () => {
+                    this.#drawer.toggleColor(v.id)
+
+                    this.display(false)
                 }
             }
         })
+    }
+
+    #saveHistory() {
+        this.history = this.history.slice(0, this.#historyIndex + 1)
+        this.history.push(JSON.stringify(this.tree))
+        this.#historyIndex = this.history.length - 1
     }
 
     #add(id: string) {
@@ -221,105 +138,324 @@ export class Tree {
         this.display()
     }
 
-    #displayGraph(tree: any, parentElement: HTMLElement, id = ""): number {
-        if (tree.length === 0) {
-            return 2 * this.#gap
-        } else if (tree.length === 1) {
-            const vertex = document.createElement("span")
-            vertex.classList.add("vertex")
-            vertex.style.left = "0px"
-            vertex.style.top = this.#gap * 4 + "px"
-            vertex.id = id + "0"
+    isFractal() {
+        return TreeController.isSemiFractal(this.tree) && this.invariantToCut()
+    }
 
-            const color = this.#selectedLeafIdMap.get(vertex.id)
-            if (color) vertex.style.backgroundColor = color
+    invariantToCut() {
+        return JSON.stringify(this.tree) === JSON.stringify(TreeController.cut(this.tree))
+    }
+}
 
-            this.#vertices.push(vertex)
-            parentElement.appendChild(vertex)
+class TreeDrawer {
+    top = 100
+    vertices: Map<string, HTMLElement> = new Map()
+    contextMenu!: HTMLElement
 
-            const edge = new Connector(parentElement, vertex)
-            edge.line.classList.add("blue")
+    #gap = 6
 
-            this.#edges.set([parentElement, vertex], edge)
+    #container: HTMLElement
+    #info: HTMLElement
+    #edges: Map<[HTMLElement, HTMLElement], Connector> = new Map()
 
-            return this.#displayGraph(tree[0], vertex, id + "0")
-        } else if (tree.length === 2) {
-            const vertex0 = document.createElement("span")
-            vertex0.classList.add("vertex")
-            vertex0.style.top = this.#gap * 4 + "px"
-            vertex0.id = id + "0"
+    #selectedVertexColorMap = new Map<string, string>()
+    #selectedCount = 0
 
-            const color = this.#selectedLeafIdMap.get(vertex0.id)
-            if (color) vertex0.style.backgroundColor = color
+    constructor(container: HTMLElement, info: HTMLElement) {
+        this.#container = container
+        this.#info = info
 
-            this.#vertices.push(vertex0)
-            parentElement.appendChild(vertex0)
+        this.#setupContextMenu()
+    }
 
-            const edge0 = new Connector(parentElement, vertex0)
-            edge0.line.classList.add("orange")
-            this.#edges.set([parentElement, vertex0], edge0)
-
-            const width0 = this.#displayGraph(tree[0], vertex0, id + "0")
-
-            const vertex1 = document.createElement("span")
-            vertex1.classList.add("vertex")
-            vertex1.style.top = this.#gap * 4 + "px"
-            vertex1.id = id + "1"
-
-            const color1 = this.#selectedLeafIdMap.get(vertex1.id)
-            if (color1) vertex1.style.backgroundColor = color1
-
-            this.#vertices.push(vertex1)
-            parentElement.appendChild(vertex1)
-
-            const edge1 = new Connector(parentElement, vertex1)
-            edge1.line.classList.add("red")
-            this.#edges.set([parentElement, vertex1], edge1)
-
-            const width1 = this.#displayGraph(tree[1], vertex1, id + "1")
-
-            const av = width0 + width1 - this.#gap
-
-            vertex0.style.left = -av * (Math.sqrt(3) / 2) - this.#gap + "px"
-            vertex1.style.left = av * (Math.sqrt(3) / 2) + this.#gap + "px"
-
-            return width0 + width1
+    toggleColor(id: string) {
+        if (this.#selectedVertexColorMap.get(id)) {
+            this.#selectedVertexColorMap.delete(id)
         } else {
-            throw new SyntaxError("ミツマタが発生!")
+            this.#selectedVertexColorMap.set(id, `oklch(70% 0.2 ${this.#selectedCount++ * 67})`)
         }
     }
 
-    stringify() {
-        return this.#stringify(this.tree, "")
+    display(tree: tree) {
+        this.#deleteElements()
+
+        this.#container.appendChild(Connector.ensureLayer())
+
+        const root = this.#setRootElement()
+
+        const r = this.#info.getBoundingClientRect()
+
+        let id = ""
+        let t = tree
+        while (1) {
+            if (t.length === 0) break
+            t = t[0]
+            id += "0"
+        }
+
+        const w = this.#displayGraph(tree, root, "", 0)
+
+        for (let i = 0; i < 3; i++) {
+            root.style.left = `calc(${r.width * 1.1}px + ${w.left}px)`
+        }
     }
 
-    #stringify(tree: tree, branch: string): string {
+    #setupContextMenu() {
+        this.#container.innerHTML = `
+            <div id="context-menu">
+                <button>追加</button>
+                <button>消す</button>
+                <button>これ以下を木にする</button>
+                <button>この頂点をマークする/外す</button>
+            </div>
+        `
+
+        this.contextMenu = this.#container.querySelector("#context-menu")!
+        this.contextMenu.style.display = "none"
+
+        document.body.append(this.contextMenu)
+
+        this.#container.addEventListener("pointerdown", () => {
+            this.contextMenu.style.display = "none"
+        })
+    }
+
+    #displayGraph(
+        tree: tree,
+        parentElement: HTMLElement,
+        id: string,
+        direction: 0 | 1 | 2,
+    ): { right: number; left: number } {
+        if (tree.length === 0) {
+            return { right: this.#gap * 2, left: this.#gap * 2 }
+        } else if (tree.length === 1) {
+            const vertex = this.#setVertexElement(parentElement, id + "0", "blue")
+            return this.#displayGraph(tree[0], vertex, id + "0", 0)
+        } else if (tree.length === 2) {
+            const vertex0 = this.#setVertexElement(parentElement, id + "0", "orange")
+            const width0 = this.#displayGraph(tree[0], vertex0, id + "0", 1)
+
+            const vertex1 = this.#setVertexElement(parentElement, id + "1", "red")
+            const width1 = this.#displayGraph(tree[1], vertex1, id + "1", 2)
+
+            const left = width0.right + this.#gap
+            const right = width1.left + this.#gap
+
+            vertex0.style.left = -left + "px"
+            vertex1.style.left = right + "px"
+
+            return { left: left + width0.left, right: right + width1.right }
+        }
+
+        throw new SyntaxError("ミツマタが発生!")
+    }
+
+    #setRootElement() {
+        const root = this.#createVertexElement(this.top, 0, "")
+        this.#container.appendChild(root)
+
+        return root
+    }
+
+    #deleteElements() {
+        this.contextMenu.style.display = "none"
+
+        this.#edges.forEach((c) => c.destroy())
+        this.#edges.clear()
+        this.vertices.clear()
+
+        this.#container.innerHTML = ""
+        this.#info.innerHTML = ""
+    }
+
+    #setVertexElement(parentElement: HTMLElement, id: string, color: string) {
+        const vertex = this.#createVertexElement((this.#gap * 4 * 2) / Math.sqrt(3), 0, id)
+
+        parentElement.appendChild(vertex)
+
+        const edge = new Connector(parentElement, vertex)
+        edge.line.classList.add(color)
+
+        this.#edges.set([parentElement, vertex], edge)
+
+        return vertex
+    }
+
+    #createVertexElement(top: number, left: number, id: string) {
+        const vertex = document.createElement("span")
+        vertex.classList.add("vertex")
+        vertex.style.top = `${top}px`
+        vertex.style.left = `${left}px`
+        vertex.id = id
+
+        const color = this.#selectedVertexColorMap.get(vertex.id)
+        if (color) vertex.style.backgroundColor = color
+
+        this.vertices.set(vertex.id, vertex)
+
+        return vertex
+    }
+
+    folder(tree: tree) {
+        this.#folder(tree, this.#info)
+    }
+
+    #folder(tree: tree, parent: HTMLElement, depth = 0, branch = "") {
+        const button = document.createElement("button")
+        button.innerHTML = `${this.stringify(tree, branch)}`
+
+        const layer = document.createElement("div")
+        layer.classList.add("hidden", "layer")
+        layer.dataset["depth"] = "2em"
+
+        let created = false
+
+        const dot = () => {
+            const p2 = document.createElement("span")
+            p2.textContent = "..."
+            p2.classList.add("dot")
+            return p2
+        }
+
+        const create = () => {
+            created = true
+
+            if (tree.length === 1) {
+                layer.appendChild(dot())
+
+                this.#folder(tree[0], layer, depth + 1, branch + 0)
+                this.#folder(tree[0], layer, depth + 1, branch + 0)
+                this.#folder(tree[0], layer, depth + 1, branch + 0)
+
+                layer.appendChild(dot())
+            } else if (tree.length === 2) {
+                this.#folder(tree[0], layer, depth + 1, branch + 0)
+                this.#folder(tree[1], layer, depth + 1, branch + 1)
+                this.#folder(tree[1], layer, depth + 1, branch + 1)
+                this.#folder(tree[1], layer, depth + 1, branch + 1)
+
+                layer.appendChild(dot())
+            }
+        }
+
+        button.onclick = () => {
+            if (!created) create()
+            layer.classList.toggle("hidden")
+        }
+
+        parent.appendChild(button)
+        parent.appendChild(layer)
+    }
+
+    stringify(tree: tree, branch: string = ""): string {
         const color = ["#D6D848", "#CC76D1", "#4A9DF8"][branch.length % 3]
 
         const c = (t: string) => `<span style="color: ${color}">${t}</span>`
 
         if (tree.length === 0) {
-            const color = this.#selectedLeafIdMap.get(branch)
+            const color = this.#selectedVertexColorMap.get(branch)
             if (color) return `<span style="color: ${color};">0</span>`
 
             return "0"
-        } else if (tree.length === 1) return `${c("(")}${this.#stringify(tree[0], branch + 0)}${c(")")}`
-        else if (tree.length === 2)
-            return `${c("[")}${this.#stringify(tree[0], branch + 0)},${this.#stringify(tree[1], branch + 1)}${c("]")}`
+        } else if (tree.length === 1) {
+            return `${c("(")}${this.stringify(tree[0], branch + 0)}${c(")")}`
+        } else if (tree.length === 2) {
+            return `${c("[")}${this.stringify(tree[0], branch + 0)},${this.stringify(tree[1], branch + 1)}${c("]")}`
+        }
 
         throw new SyntaxError("ミツマタが発生!")
     }
 
-    isFractal() {
-        return this.isSemiFractal() && JSON.stringify(this.tree) === JSON.stringify(this.getCut(this.tree))
+    setupLeft(tree: tree, history: string[]) {
+        this.#info.innerHTML = ""
+
+        this.#info.innerHTML += this.stringify(tree) + "<br>"
+        this.#info.innerHTML += JSON.stringify(tree) + "<br>"
+        this.#info.innerHTML += `階層: ${TreeController.countRank(tree) ?? "一意でない"}` + "<br>"
+        this.#info.innerHTML += `準フラクタル？ ${TreeController.isSemiFractal(tree)}` + "<br>"
+        this.#info.innerHTML += `C(W)=W？ ${JSON.stringify(TreeController.cut(tree)) === JSON.stringify(tree)}` + "<br>"
+        this.#info.innerHTML += `<textarea rows="5">${history
+            .map((tree) => JSON.stringify(tree).slice(1, -1))
+            .join("\n")}</textarea> <br>`
+
+        this.folder(tree)
+    }
+}
+
+class TreeController {
+    static countRank(tree: tree): number | null {
+        if (tree.length === 0) return 0
+        else if (tree.length === 1) {
+            const rank = this.countRank(tree[0])
+
+            if (rank === null) return null
+
+            return rank + 1
+        } else if (tree.length === 2) {
+            const leftRank = this.countRank(tree[0])
+            const rightRank = this.countRank(tree[1])
+
+            if (leftRank !== rightRank) return null
+
+            if (leftRank === null) return null
+
+            return leftRank + 1
+        }
+
+        throw new Error("ミツマタが発生!")
     }
 
-    isSemiFractal() {
+    static getRankNTrees(tree: tree, n: number): tree[] {
+        if (n === 1) {
+            if (tree.length === 1) {
+                return [tree[0]]
+            } else if (tree.length === 2) {
+                return [tree[1]]
+            }
+        }
+
+        if (tree.length === 0) {
+            return []
+        } else if (tree.length === 1) {
+            return this.getRankNTrees(tree[0], n - 1)
+        } else if (tree.length === 2) {
+            return [...this.getRankNTrees(tree[0], n - 1), ...this.getRankNTrees(tree[1], n - 1)]
+        }
+
+        throw new Error("なんかおかしい!")
+    }
+
+    static cut(tree: tree): tree {
+        if (tree.length === 0) {
+            return []
+        } else if (tree.length === 1) {
+            return [this.cut(tree[0]), tree[0]]
+        } else if (tree.length === 2) {
+            return [this.cut(tree[1]), tree[1]]
+        } else {
+            throw new SyntaxError("ミツマタが発生!")
+        }
+    }
+
+    static divide(tree: tree) {
+        if (tree.length === 1) {
+            if (tree[0].length === 0) tree.splice(0, 1)
+            else this.divide(tree[0])
+        } else if (tree.length === 2) {
+            if (tree[1].length === 0) tree.splice(0, 1)
+            else this.divide(tree[1])
+
+            if (tree[0].length === 0) tree.splice(0, 1)
+            else this.divide(tree[0])
+        }
+    }
+
+    static isSemiFractal(tree: tree) {
         // 同じ階層で、青か赤から来ている木を取得
 
         let i = 1
         while (1) {
-            const trees = this.#getRankNTrees(this.tree, i)
+            const trees = TreeController.getRankNTrees(tree, i)
             if (trees.length === 0) break
 
             if (!trees.every((tree) => tree.length === 0) && trees.some((tree) => tree.length === 0)) return false
@@ -334,100 +470,5 @@ export class Tree {
         }
 
         return true
-    }
-
-    #countRank(tree: tree): number | null {
-        if (tree.length === 0) return 0
-        else if (tree.length === 1) {
-            const rank = this.#countRank(tree[0])
-
-            if (rank === null) return null
-
-            return rank + 1
-        } else if (tree.length === 2) {
-            const leftRank = this.#countRank(tree[0])
-            const rightRank = this.#countRank(tree[1])
-
-            if (leftRank !== rightRank) return null
-
-            if (leftRank === null) return null
-
-            return leftRank + 1
-        }
-
-        throw new Error("ミツマタが発生!")
-    }
-
-    #getRankNTrees(tree: tree, n: number): tree[] {
-        if (n === 1) {
-            if (tree.length === 1) {
-                return [tree[0]]
-            } else if (tree.length === 2) {
-                return [tree[1]]
-            }
-        }
-
-        if (tree.length === 0) {
-            return []
-        } else if (tree.length === 1) {
-            return this.#getRankNTrees(tree[0], n - 1)
-        } else if (tree.length === 2) {
-            return [...this.#getRankNTrees(tree[0], n - 1), ...this.#getRankNTrees(tree[1], n - 1)]
-        }
-
-        throw new Error("なんかおかしい!")
-    }
-
-    folder() {
-        this.#folder(this.tree, this.#info)
-    }
-
-    #folder(tree: tree, parent: HTMLElement, depth = 0, branch = "") {
-        const button = document.createElement("button")
-        button.innerHTML = `${this.#stringify(tree, branch)}`
-
-        const layer = document.createElement("div")
-        layer.classList.add("hidden", "layer")
-        layer.dataset["depth"] = "2em"
-
-        let created = false
-
-        const create = () => {
-            created = true
-
-            if (tree.length === 1) {
-                const p = document.createElement("span")
-                p.textContent = "..."
-                p.classList.add("dot")
-                layer.appendChild(p)
-
-                this.#folder(tree[0], layer, depth + 1, branch + 0)
-                this.#folder(tree[0], layer, depth + 1, branch + 0)
-                this.#folder(tree[0], layer, depth + 1, branch + 0)
-
-                const p2 = document.createElement("span")
-                p2.textContent = "..."
-                p2.classList.add("dot")
-                layer.appendChild(p2)
-            } else if (tree.length === 2) {
-                this.#folder(tree[0], layer, depth + 1, branch + 0)
-                this.#folder(tree[1], layer, depth + 1, branch + 1)
-                this.#folder(tree[1], layer, depth + 1, branch + 1)
-                this.#folder(tree[1], layer, depth + 1, branch + 1)
-
-                const p = document.createElement("span")
-                p.textContent = "..."
-                p.classList.add("dot")
-                layer.appendChild(p)
-            }
-        }
-
-        button.onclick = () => {
-            if (!created) create()
-            layer.classList.toggle("hidden")
-        }
-
-        parent.appendChild(button)
-        parent.appendChild(layer)
     }
 }

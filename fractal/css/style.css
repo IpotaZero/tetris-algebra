@@ -8,6 +8,8 @@ body {
     background-color: #111;
     color: whitesmoke;
     display: flex;
+
+    overflow: auto;
 }
 
 #left {
@@ -16,6 +18,8 @@ body {
     padding: 0.5em;
     gap: 1em;
 
+    width: 25%;
+
     overflow-y: auto;
     overflow-x: visible;
 }
@@ -23,6 +27,10 @@ body {
 #container {
     flex: 1;
     overflow: auto;
+
+    width: fit-content;
+
+    margin-right: 15%;
 }
 
 textarea {
