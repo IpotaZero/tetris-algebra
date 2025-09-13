@@ -112,6 +112,8 @@ function downloadImage(url: string, filename: string) {
 }
 
 async function screenShot(tree: Tree) {
-    const canvas = await html2canvas(document.querySelector("#container")!, { backgroundColor: "#111" })
+    const container = document.querySelector<HTMLElement>("#container")!
+    const rect = container.getBoundingClientRect()
+    const canvas = await html2canvas(container, { backgroundColor: "#111", width: rect.width, windowWidth: rect.width })
     downloadImage(canvas.toDataURL(), JSON.stringify(tree.tree))
 }

@@ -191,6 +191,7 @@ class TreeDrawer {
         const top = (this.#height / Math.sqrt(3)) * (depth - 1)
 
         this.#container.style.height = `calc(${this.#width * 2 * depth + top}px + 1.5em)`
+        this.#container.style.left = `25%`
 
         // const name = JSON.stringify(tree)
 
@@ -252,9 +253,9 @@ class TreeDrawer {
 
             const left = width.left + this.#width
 
-            vertex.style.left = -left + "px"
+            vertex.style.left = -this.#width * 4 + "px"
 
-            return { left: width.left + left, right: width.right }
+            return { left: left + this.#width * 4, right: width.right }
         } else if (tree.length === 2) {
             const vertex0 = this.#setVertexElement(parentElement, id + "0", "blue")
             const width0 = this.#displayGraph(tree[0], vertex0, id + "0", 1)
@@ -262,13 +263,13 @@ class TreeDrawer {
             const vertex1 = this.#setVertexElement(parentElement, id + "1", "red")
             const width1 = this.#displayGraph(tree[1], vertex1, id + "1", 2)
 
-            const left = width0.right + this.#width
-            const right = width1.left + this.#width
+            const left = width0.right + this.#width * 2
+            const right = width1.left + this.#width * 2
 
             vertex0.style.left = -left + "px"
             vertex1.style.left = right + "px"
 
-            return { left: left + width0.left + this.#width, right: right + width1.right + this.#width }
+            return { left: left + width0.left, right: right + width1.right }
         }
 
         throw new SyntaxError("ミツマタが発生!")
@@ -447,7 +448,7 @@ export class TreeController {
             if (tree.length === 1) {
                 return [tree[0]]
             } else if (tree.length === 2) {
-                return [tree[1]]
+                return [tree[0]]
             }
         }
 
