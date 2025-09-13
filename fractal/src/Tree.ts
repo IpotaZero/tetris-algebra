@@ -248,12 +248,18 @@ class TreeDrawer {
             return { right: this.#width * 2, left: this.#width * 2 }
         } else if (tree.length === 1) {
             const vertex = this.#setVertexElement(parentElement, id + "0", "blue")
-            return this.#displayGraph(tree[0], vertex, id + "0", 0)
+            const width = this.#displayGraph(tree[0], vertex, id + "0", 0)
+
+            const right = width.right + this.#width
+
+            vertex.style.left = right + "px"
+
+            return { left: width.left, right: width.right }
         } else if (tree.length === 2) {
-            const vertex0 = this.#setVertexElement(parentElement, id + "0", "orange")
+            const vertex0 = this.#setVertexElement(parentElement, id + "0", "red")
             const width0 = this.#displayGraph(tree[0], vertex0, id + "0", 1)
 
-            const vertex1 = this.#setVertexElement(parentElement, id + "1", "red")
+            const vertex1 = this.#setVertexElement(parentElement, id + "1", "blue")
             const width1 = this.#displayGraph(tree[1], vertex1, id + "1", 2)
 
             const left = width0.right + this.#width
@@ -262,7 +268,7 @@ class TreeDrawer {
             vertex0.style.left = -left + "px"
             vertex1.style.left = right + "px"
 
-            return { left: left + width0.left, right: right + width1.right }
+            return { left: left + width0.left + this.#width, right: right + width1.right + this.#width }
         }
 
         throw new SyntaxError("ミツマタが発生!")
