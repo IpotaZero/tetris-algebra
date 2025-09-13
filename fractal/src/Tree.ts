@@ -250,16 +250,16 @@ class TreeDrawer {
             const vertex = this.#setVertexElement(parentElement, id + "0", "blue")
             const width = this.#displayGraph(tree[0], vertex, id + "0", 0)
 
-            const right = width.right + this.#width
+            const left = width.left + this.#width
 
-            vertex.style.left = right + "px"
+            vertex.style.left = -left + "px"
 
-            return { left: width.left, right: width.right }
+            return { left: width.left + left, right: width.right }
         } else if (tree.length === 2) {
-            const vertex0 = this.#setVertexElement(parentElement, id + "0", "red")
+            const vertex0 = this.#setVertexElement(parentElement, id + "0", "blue")
             const width0 = this.#displayGraph(tree[0], vertex0, id + "0", 1)
 
-            const vertex1 = this.#setVertexElement(parentElement, id + "1", "blue")
+            const vertex1 = this.#setVertexElement(parentElement, id + "1", "red")
             const width1 = this.#displayGraph(tree[1], vertex1, id + "1", 2)
 
             const left = width0.right + this.#width
@@ -466,9 +466,9 @@ export class TreeController {
         if (tree.length === 0) {
             return []
         } else if (tree.length === 1) {
-            return [this.cut(tree[0]), tree[0]]
+            return [tree[0], this.cut(tree[0])]
         } else if (tree.length === 2) {
-            return [this.cut(tree[1]), tree[1]]
+            return [tree[0], this.cut(tree[0])]
         } else {
             throw new SyntaxError("ミツマタが発生!")
         }
